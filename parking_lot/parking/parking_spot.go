@@ -15,37 +15,44 @@ type ParkingSpot struct {
 	mutex   sync.RWMutex
 }
 
-func (p ParkingSpot) Available() bool {
+var ErrSpotOccupied = errors.New("already occupied")
+
+func (p *ParkingSpot) Available() bool {
+	p.mutex.RLock()
+	defer p.mutex.RUnlock()
+
 	return p.vehicle == nil
 }
-func (p ParkingSpot) CanFitVehicle(size VehicleSize) bool {
+func (p *ParkingSpot) CanFitVehicle(size VehicleSize) bool {
 	return size <= p.size
 }
 
 func (p *ParkingSpot) ParkVehicle(v Vehicle) error {
-	if !p.Available() {
-		return errors.New("Already occupied")
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	if p.vehicle != nil {
+		return ErrSpotOccupied
 	}
 
 	if !p.CanFitVehicle(v.Size()) {
 		return fmt.Errorf("Cannot park vehicle with size %d, parking spot has size %d", v.Size(), p.size)
 	}
 
-	p.mutex.Lock()
 	p.vehicle = v
-	p.mutex.Unlock()
 	return nil
 }
 
 func (p *ParkingSpot) UnParkVehicle() (Vehicle, error) {
-	if p.Available() {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	if p.vehicle == nil {
 		return nil, errors.New("no vehicle to unpark")
 	}
 
-	p.mutex.Lock()
 	vehicle := p.vehicle
 	p.vehicle = nil
-	p.mutex.Unlock()
 	return vehicle, nil
 }
 

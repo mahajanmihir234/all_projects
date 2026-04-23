@@ -1,40 +1,59 @@
 package parking
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+	"sync"
+)
+
+var (
+	parkingLotInstance *ParkingLot
+	parkingLotOnce     sync.Once
+)
 
 type ParkingLot struct {
 	counter                int
 	floors                 []ParkingFloor
-	activeTickets          map[int]ParkingTicket
+	activeTickets          map[int]*ParkingTicket
 	feeStrategy            FeeStrategy
 	spotAllocationStrategy SpotAllocationStrategy
+	mutex                  sync.Mutex
 }
 
 func (p *ParkingLot) Park(v Vehicle) (*ParkingTicket, error) {
-	spot, err := p.spotAllocationStrategy.Allot(p.floors, v)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Println("BeforeParking: ", spot.id, spot.size, spot.vehicle)
+	for {
+		spot, err := p.spotAllocationStrategy.Allot(p.floors, v)
+		if err != nil {
+			return nil, err
+		}
 
-	parkingTicket := NewParkingTicket(p.counter, v, spot)
-	err = spot.ParkVehicle(v)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Println("AfterParking: ", spot.id, spot.size, spot.vehicle)
-	p.activeTickets[parkingTicket.id] = parkingTicket
-	p.counter++
+		if err := spot.ParkVehicle(v); err != nil {
+			if errors.Is(err, ErrSpotOccupied) {
+				// Another goroutine claimed this spot first; retry with a fresh allocation.
+				continue
+			}
+			return nil, err
+		}
 
-	return &parkingTicket, nil
+		p.mutex.Lock()
+		parkingTicket := NewParkingTicket(p.counter, v, spot)
+		p.activeTickets[parkingTicket.id] = &parkingTicket
+		p.counter++
+		p.mutex.Unlock()
+
+		return &parkingTicket, nil
+	}
 }
 
-func (p ParkingLot) UnPark(ticketId int) (*float64, error) {
-	if _, ok := p.activeTickets[ticketId]; !ok {
+func (p *ParkingLot) UnPark(ticketId int) (*float64, error) {
+	p.mutex.Lock()
+	ticket, ok := p.activeTickets[ticketId]
+	if !ok {
+		p.mutex.Unlock()
 		return nil, fmt.Errorf("Invalid ticket id")
 	}
-	ticket := p.activeTickets[ticketId]
 	delete(p.activeTickets, ticketId)
+	p.mutex.Unlock()
 
 	ticket.AddExitTime()
 	parkingSpot := ticket.spot
@@ -47,7 +66,7 @@ func (p ParkingLot) UnPark(ticketId int) (*float64, error) {
 	return &fee, nil
 }
 
-func (p ParkingLot) Availability() map[VehicleSize]int {
+func (p *ParkingLot) Availability() map[VehicleSize]int {
 	available := map[VehicleSize]int{
 		SMALL:  0,
 		MEDIUM: 0,
@@ -66,8 +85,17 @@ func NewParkingLot(floors []ParkingFloor, feeStrategy FeeStrategy, spotStrategy 
 	return ParkingLot{
 		counter:                1,
 		floors:                 floors,
-		activeTickets:          map[int]ParkingTicket{},
+		activeTickets:          map[int]*ParkingTicket{},
 		feeStrategy:            feeStrategy,
 		spotAllocationStrategy: spotStrategy,
+		mutex:                  sync.Mutex{},
 	}
+}
+
+func GetParkingLot(floors []ParkingFloor, feeStrategy FeeStrategy, spotStrategy SpotAllocationStrategy) *ParkingLot {
+	parkingLotOnce.Do(func() {
+		lot := NewParkingLot(floors, feeStrategy, spotStrategy)
+		parkingLotInstance = &lot
+	})
+	return parkingLotInstance
 }

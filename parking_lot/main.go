@@ -17,7 +17,7 @@ func main() {
 	feeStrategy := parking.HourlyParkingStrategy{HourlyRate: 20}
 	spotAllocationStrategy := parking.FirstSpotStrategy{}
 
-	parkingLot := parking.NewParkingLot([]parking.ParkingFloor{parkingFloor}, feeStrategy, spotAllocationStrategy)
+	parkingLot := parking.GetParkingLot([]parking.ParkingFloor{parkingFloor}, feeStrategy, spotAllocationStrategy)
 	fmt.Println("Fresh lot")
 	for size, availability := range parkingLot.Availability() {
 		fmt.Println(parking.VehicleSize(size), availability)
