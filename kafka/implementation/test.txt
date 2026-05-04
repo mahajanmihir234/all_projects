@@ -1,0 +1,55 @@
+Metric Definition -> SQL Table
+
+SQL Table -> Schema
+
+Schema 
+1. Timestamp Column -> (timestamp)
+2. Value column / expression (count_users -> SUM(count_users), user_id -> COUNT(DISTINCT user_id))
+3. (Optional) Dimension columns (country, plan_type, age_group)
+
+Metric Layer -> Semantic Layer
+
+Insights Layer -> Uses Semantic Layer
+
+
+ETL Layer
+
+1. Client Data -> Warehouses S3, Snowflake, ...
+2. Connector Layer -> Query these warehouses and get the Data
+3. Tables Layer
+
+source_1
+            -> SELECT user_id, source_2.* FROM source_1 JOIN source_2 ON source_1.user_id = source_2.user_id
+source_2
+
+Views -> Sources
+    -> SQL Views
+
+
+source_1
+        -> table_1 (SQL) -> table_2 (SQL) ... -> table_n (Mapped Metric definition)
+source_2 
+
+
+Semantic Layer -> Metrics Layer -> Definitions in configs
+
+1. Time series Query -> Metric_id, Start date, end date, filters -> Value 
+
+SELECT * FROM table FOR VERSION AS OF {13} 
+
+
+Metric -> id, created_at, table_id, value_expression, dimensions [list of columns]
+
+Metric -> required_columns( table_id): []
+
+
+
+1. Time Series Query 
+
+Query Layer -> {
+    TimeSeriesQuery(metric: Metric, date_filters, dimension_filters) -> SQL Query -> Cache (Redis) -> Database (Data Lake)
+    GroupBYQuery()
+
+}
+
+aman.sehrawat@slicebank.com
