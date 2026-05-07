@@ -24,6 +24,7 @@ func NewLRUCache(size int) LRUCache {
 		hashMap:        map[interface{}]*Node{},
 		linkedListHead: head,
 		linkedListTail: tail,
+		mutex:          sync.Mutex{},
 	}
 }
 
