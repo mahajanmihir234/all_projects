@@ -21,6 +21,10 @@ type PrintTask struct {
 	id string
 }
 
+func NewPrintTask(id string) PrintTask {
+	return PrintTask{id: id}
+}
+
 func (p PrintTask) Id() string {
 	return p.id
 }

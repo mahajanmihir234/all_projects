@@ -10,6 +10,10 @@ type SingleExecutionStrategy struct {
 	scheduledTime time.Time
 }
 
+func NewSingleExecutionStrategy(scheduledTime time.Time) SingleExecutionStrategy {
+	return SingleExecutionStrategy{scheduledTime: scheduledTime}
+}
+
 func (s SingleExecutionStrategy) NextExecutionTimestamp(lastExecutionTimestamp *time.Time) *time.Time {
 	if lastExecutionTimestamp != nil {
 		return nil
@@ -20,6 +24,13 @@ func (s SingleExecutionStrategy) NextExecutionTimestamp(lastExecutionTimestamp *
 type RecurringExecutionStrategy struct {
 	firstExecutionTimestamp time.Time
 	interval                time.Duration
+}
+
+func NewRecurringExecutionStrategy(firstExecution time.Time, interval time.Duration) RecurringExecutionStrategy {
+	return RecurringExecutionStrategy{
+		firstExecutionTimestamp: firstExecution,
+		interval:                interval,
+	}
 }
 
 func (s RecurringExecutionStrategy) NextExecutionTimestamp(lastExecutionTimestamp *time.Time) *time.Time {
