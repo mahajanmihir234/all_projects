@@ -3,23 +3,38 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
+	"task_scheduler/config"
 	"task_scheduler/service"
 )
 
-// failTask demonstrates observer and error-channel behavior on failure.
-type failTask struct {
-	id string
-}
-
-func (f failTask) Id() string { return f.id }
-
-func (f failTask) Execute() error {
-	return fmt.Errorf("simulated failure for %s", f.id)
-}
-
 func main() {
+	scheduleDir := "schedules"
+	if len(os.Args) > 1 {
+		scheduleDir = os.Args[1]
+	}
+	absDir, err := filepath.Abs(scheduleDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "resolve schedule dir: %v\n", err)
+		os.Exit(1)
+	}
+
+	baseTime := time.Now()
+	tasks, err := config.LoadScheduleDir(absDir, baseTime)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "load schedules: %v\n", err)
+		os.Exit(1)
+	}
+	if len(tasks) == 0 {
+		fmt.Fprintf(os.Stderr, "no tasks found in %s\n", absDir)
+		os.Exit(1)
+	}
+
+	fmt.Println("=== Task scheduler demo (JSON schedules) ===")
+	fmt.Printf("Loaded %d task(s) from %s\n\n", len(tasks), absDir)
+
 	observer := service.LoggingObserver{}
 	scheduler := service.NewTaskSchedulerService(2, []service.TaskObserver{observer})
 	scheduler.Start()
@@ -31,36 +46,12 @@ func main() {
 		}
 	}()
 
-	now := time.Now()
-	fmt.Println("=== Task scheduler demo ===")
-	fmt.Println("Scheduling one-shot, recurring, and failing tasks...")
+	for _, loaded := range tasks {
+		scheduler.Schedule(loaded.Task, loaded.Strategy)
+		fmt.Printf("  scheduled %-20s  (%s)\n", loaded.Task.Id(), filepath.Base(loaded.Source))
+	}
 
-	// One-shot tasks at different times (heap orders by soonest first).
-	scheduler.Schedule(
-		service.NewPrintTask("welcome-email"),
-		service.NewSingleExecutionStrategy(now.Add(1*time.Second)),
-	)
-	scheduler.Schedule(
-		service.NewPrintTask("daily-report"),
-		service.NewSingleExecutionStrategy(now.Add(2*time.Second)),
-	)
-	scheduler.Schedule(
-		service.NewPrintTask("nightly-backup"),
-		service.NewSingleExecutionStrategy(now.Add(3*time.Second)),
-	)
-
-	// Recurring task: first run in 500ms, then every 500ms until shutdown.
-	scheduler.Schedule(
-		service.NewPrintTask("health-check"),
-		service.NewRecurringExecutionStrategy(now.Add(500*time.Millisecond), 500*time.Millisecond),
-	)
-
-	scheduler.Schedule(
-		failTask{id: "bad-import"},
-		service.NewSingleExecutionStrategy(now.Add(1500*time.Millisecond)),
-	)
-
-	// Let all scheduled work finish before shutdown.
-	time.Sleep(5 * time.Second)
+	fmt.Println("\nRunning for 8s...")
+	time.Sleep(8 * time.Second)
 	fmt.Println("=== Demo complete ===")
 }

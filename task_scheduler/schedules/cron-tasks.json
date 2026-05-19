@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "metrics-scrape",
+      "task_type": "print",
+      "schedule": {
+        "type": "cron",
+        "expression": "*/2 * * * * *"
+      }
+    },
+    {
+      "id": "session-cleanup",
+      "task_type": "print",
+      "schedule": {
+        "type": "cron",
+        "expression": "*/3 * * * * *"
+      }
+    },
+    {
+      "id": "weekly-digest",
+      "task_type": "print",
+      "schedule": {
+        "type": "cron",
+        "expression": "@every 4s"
+      }
+    }
+  ]
+}

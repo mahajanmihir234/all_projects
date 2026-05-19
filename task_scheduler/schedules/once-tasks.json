@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "welcome-email",
+      "task_type": "print",
+      "schedule": {
+        "type": "once",
+        "in": "1s"
+      }
+    },
+    {
+      "id": "daily-report",
+      "task_type": "print",
+      "schedule": {
+        "type": "once",
+        "in": "2s"
+      }
+    },
+    {
+      "id": "nightly-backup",
+      "task_type": "print",
+      "schedule": {
+        "type": "once",
+        "in": "3s"
+      }
+    },
+    {
+      "id": "bad-import",
+      "task_type": "fail",
+      "schedule": {
+        "type": "once",
+        "in": "1500ms"
+      }
+    }
+  ]
+}
